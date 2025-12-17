@@ -18,6 +18,9 @@
 #include <set>
 #include <unordered_map>
 
+// Forward declaration
+namespace sol_compat { class CoverageCollector; }
+
 namespace fuzzer {
 
 // TableOfRecentCompares (TORC) remembers the most recently performed
@@ -128,7 +131,27 @@ class TracePC {
   static uintptr_t GetNextInstructionPc(uintptr_t PC);
   bool PcIsFuncEntry(const PCTableEntry *TE) { return TE->PCFlags & 1; }
 
+  // Expose observed function counters to solfuzz. We vendor libFuzzer, so it's
+  // acceptable to add these lightweight accessors. Counter values come from
+  // inline 8-bit counters and may saturate.
+  template<class CallBack>
+  void ForEachObservedFuncCounter(CallBack CB) {
+    for (const auto &KV : ObservedFuncs) {
+      const uintptr_t Pc = KV.first;
+      const uint64_t Value = static_cast<uint64_t>(KV.second); // PC => Counter value
+      CB(Pc, Value);
+    }
+  }
+
+  uint64_t GetObservedFuncCounter(uintptr_t PC) {
+    auto It = ObservedFuncs.find(PC);
+    if (It == ObservedFuncs.end()) return 0ULL;
+    return static_cast<uint64_t>(It->second);
+  }
+
 private:
+  // Allow our coverage collector to access internals if needed.
+  friend class ::sol_compat::CoverageCollector;
   bool UseCounters = false;
   uint32_t UseValueProfileMask = false;
   bool DoPrintNewPCs = false;
