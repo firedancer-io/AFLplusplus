@@ -128,6 +128,22 @@ class TracePC {
   static uintptr_t GetNextInstructionPc(uintptr_t PC);
   bool PcIsFuncEntry(const PCTableEntry *TE) { return TE->PCFlags & 1; }
 
+  // Accessors for solfuzz coverage collector
+  size_t GetNumPCTables() const { return NumPCTables; }
+  size_t GetNumPCsInPCTables() const { return NumPCsInPCTables; }
+  
+  const PCTableEntry* GetModulePCTableStart(size_t idx) const {
+    return idx < NumPCTables ? ModulePCTable[idx].Start : nullptr;
+  }
+  const PCTableEntry* GetModulePCTableStop(size_t idx) const {
+    return idx < NumPCTables ? ModulePCTable[idx].Stop : nullptr;
+  }
+  
+  uintptr_t GetObservedFuncCounter(uintptr_t PC) const {
+    auto it = ObservedFuncs.find(PC);
+    return it != ObservedFuncs.end() ? it->second : 0;
+  }
+
 private:
   bool UseCounters = false;
   uint32_t UseValueProfileMask = false;
